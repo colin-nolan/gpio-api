@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "gpio-api"
+version = "0.0.0"
+description = ""
+authors = ["Colin Nolan <cn580@alumni.york.ac.uk>"]
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
