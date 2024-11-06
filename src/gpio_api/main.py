@@ -1,17 +1,34 @@
 import logging
-from fastapi import FastAPI
+from typing import Annotated, Callable
+
+from fastapi import Depends, FastAPI
 from gpiozero import InputDevice, PinInvalidPin, OutputDevice, PinFixedPull
 from fastapi import HTTPException
 from http import HTTPStatus
 
-import uvicorn
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+security = HTTPBasic()
 
 
 
+def require_auth(callable: Callable):
+    def wrapper(credentials: HTTPBasicCredentials = Depends(security), *args, **kwargs):
+        if credentials.username != "user" and credentials.password != "password":
+            raise HTTPException(
+                status_code=HTTPStatus.UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+        return callable(*args, **kwargs)
+    return wrapper
+
+
+
+@require_auth
 @app.get("/pin/{pin_number}")
 def read_pin(pin_number: int, pull_up: bool | None = False) -> bool:
     try:
@@ -29,6 +46,7 @@ def read_pin(pin_number: int, pull_up: bool | None = False) -> bool:
 
 
 @app.put("/pin/{pin_number}")
+@require_auth
 def write_pin(pin_number: int, state: bool):
     try:
         device = OutputDevice(pin_number, initial_value=None)
