@@ -1,41 +1,43 @@
 import logging
-from fastapi import FastAPI
-from gpiozero import InputDevice, PinInvalidPin, OutputDevice, PinFixedPull
-from fastapi import HTTPException
 from http import HTTPStatus
+from typing import Annotated
+
+from fastapi import FastAPI, HTTPException, Query
+from gpiozero import PinInvalidPin
+
+from gpio_api import pins
+from gpio_api.pins import PinNumber
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
 
-@app.get("/pin/{pin_number}")
-def read_pin(pin_number: int, pull_up: bool | None = False) -> bool:
+@app.get("/output/{pin_number}")
+async def read_output_state(pin_number: int) -> bool:
     try:
-        return read_pin(pin_number, pull_up)
-    except PinInvalidPin:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Pin not found")
-    except PinFixedPull:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail="Pin has physical pull-up resistor so can only be read with pull_up set to true",
-        )
-
-
-@app.put("/pin/{pin_number}")
-def write_pin(pin_number: int, state: bool):
-    try:
-        return write_pin(pin_number, state)
+        return pins.read_output_state(pin_number)
     except PinInvalidPin:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Pin not found")
 
 
-@app.get("/pins")
-def write_one_pin(on_pin: int, off_pins: list[int]):
+@app.put("/output/{pin_number}")
+async def set_output_state(pin_number: PinNumber, state: bool):
     try:
-        for pin in off_pins:
-            write_pin(pin, False)
-        write_pin(on_pin, True)
+        return pins.set_output_state(pin_number, state)
     except PinInvalidPin:
-        # TODO: which one!?
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Pin not found")
+
+
+@app.put("/outputs/")
+async def set_multiple_output_states(
+    on_pins: Annotated[list[PinNumber], Query()] = [], off_pins: Annotated[list[PinNumber], Query()] = []
+):
+    # Turn on after turning off to avoid potential overvoltages on combined outputs
+    pin_state_pairs = [(pin, False) for pin in off_pins] + [(pin, True) for pin in on_pins]
+
+    for pin, state in pin_state_pairs:
+        try:
+            pins.set_output_state(pin, state)
+        except PinInvalidPin:
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=f"Pin not found: {pin}")
