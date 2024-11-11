@@ -1,6 +1,6 @@
 import logging
 from threading import Lock
-from typing import Callable, TypeAlias, TypeVar
+from typing import Callable, Type, TypeAlias, TypeVar
 
 from gpiozero import InputDevice, OutputDevice
 
@@ -14,6 +14,13 @@ input_devices_register: dict[PinNumber, InputDevice] = {}
 devices_register_lock = Lock()
 
 
+class PinRegisterError(RuntimeError):
+    def __init__(self, pin: PinNumber, pin_device_type: Type[DeviceType]):
+        super().__init__(f"Pin {pin} is already registered as a {pin_device_type.__name__}")
+        self.pin = pin
+        self.pin_device_type = pin_device_type
+
+
 def get_device(
     pin_number: PinNumber,
     device_register: dict[PinNumber, DeviceType],
@@ -24,9 +31,9 @@ def get_device(
 
     with devices_register_lock:
         if device_register == output_device_register and pin_number in input_devices_register:
-            raise RuntimeError(f"Pin {pin_number} is already registered as an input device")
+            raise PinRegisterError(f"Pin {pin_number} is already registered as an input device")
         elif device_register == input_devices_register and pin_number in output_device_register:
-            raise RuntimeError(f"Pin {pin_number} is already registered as an output device")
+            raise PinRegisterError(f"Pin {pin_number} is already registered as an output device")
 
         device = device_factory(pin_number)
         if isinstance(device, OutputDevice):
