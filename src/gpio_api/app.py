@@ -2,15 +2,31 @@ import logging
 from http import HTTPStatus
 from typing import Annotated, Callable
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from gpiozero import PinInvalidPin
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from gpio_api import pins
 from gpio_api.pins import PinNumber, PinRegisterError
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='GPIO_API_')
+    username: str
+    password: str
+
+
+settings = Settings()
+security = HTTPBasic()
+
+
+def basic_auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
+    print(settings.username, settings.password)
+
+app = FastAPI(dependencies=[Depends(security), Depends(basic_auth)])
+
 
 
 def handle_common_exceptions(callable: Callable):
