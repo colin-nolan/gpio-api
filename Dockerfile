@@ -1,6 +1,8 @@
 ARG BASE_IMAGE=python:slim
 
-
+##################################################
+# LGPIO build
+##################################################
 FROM ${BASE_IMAGE} AS lgpio-build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -17,6 +19,9 @@ RUN git clone https://github.com/joan2937/lg.git \
     && make install
 
 
+##################################################
+# Project build
+##################################################
 FROM lgpio-build AS build
 
 RUN pip install \
@@ -37,6 +42,9 @@ RUN poetry install --only main --all-extras
 RUN /app/bin/pip install gpiod
 
 
+##################################################
+# Runtime
+##################################################
 FROM ${BASE_IMAGE} AS runtime
 
 COPY --from=lgpio-build /usr/local/lib /usr/local/lib
