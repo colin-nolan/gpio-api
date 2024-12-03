@@ -12,6 +12,7 @@ gpiozero = "^2.0.1"
 fastapi = {extras = ["standard"], version = "^0.115.4"}
 lgpio = { version = "^0.2.2.0", optional = true }
 pydantic-settings = "^2.6.1"
+sqlalchemy = "^2.0.36"
 
 [tool.poetry.extras]
 rpi5 = ["lgpio"]

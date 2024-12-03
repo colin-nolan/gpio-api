@@ -1,74 +1,49 @@
 import logging
-from http import HTTPStatus
-from typing import Annotated, Callable
+from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from gpiozero import PinInvalidPin
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from gpio_api import pins
-from gpio_api.pins import PinNumber, PinRegisterError
+from gpio_api import endpoints
+from gpio_api.auth import basic_auth
+from gpio_api.config import AppConfiguration, set_app_configuration
+from gpio_api.persistence import initialise_database, initialise_output_pins
 
 logger = logging.getLogger(__name__)
+app: FastAPI
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix='GPIO_API_')
+    model_config = SettingsConfigDict(env_prefix="GPIO_API_")
     username: str
     password: str
+    database_url: str | None = None
 
 
-settings = Settings()
-security = HTTPBasic()
+def main():
+    settings = Settings()
+    security = HTTPBasic()
+    app_configuration = AppConfiguration()
+    set_app_configuration(app_configuration)
+
+    logging.basicConfig(level=logging.DEBUG, force=True)
+
+    def basic_auth_dependency(credentials: Annotated[HTTPBasicCredentials, Depends(security)]) -> str:
+        return basic_auth(credentials, settings.username.encode("utf8"), settings.password.encode("utf8"))
+
+    if settings.database_url:
+        logger.info(f"Initialising database: {settings.database_url}")
+        Session = initialise_database(settings.database_url)
+        logger.info("Initialising output pins")
+        initialise_output_pins(Session())
+        app_configuration.database_session_maker = Session
+
+    global app
+    app = FastAPI(dependencies=[Depends(security), Depends(basic_auth_dependency)])
+    app.include_router(endpoints.router)
 
 
-def basic_auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
-    print(settings.username, settings.password)
-
-app = FastAPI(dependencies=[Depends(security), Depends(basic_auth)])
-
-
-
-def handle_common_exceptions(callable: Callable):
-    def wrapper(*args, **kwargs):
-        try:
-            return callable(*args, **kwargs)
-        except PinInvalidPin as e:
-            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Pin not found") from e
-        except PinRegisterError as e:
-            raise HTTPException(
-                status_code=HTTPStatus.CONFLICT,
-                detail=f"Pin {e.pin} is already registered as a {e.pin_device_type.__name__}",
-            )
-
-    return wrapper
-
-
-@handle_common_exceptions
-@app.get("/input/{pin_number}")
-async def read_input_state(pin_number: int) -> bool:
-    return pins.read_input_state(pin_number)
-
-
-@handle_common_exceptions
-@app.get("/output/{pin_number}")
-async def read_output_state(pin_number: int) -> bool:
-    return pins.read_output_state(pin_number)
-
-
-@handle_common_exceptions
-@app.put("/output/{pin_number}")
-async def set_output_state(pin_number: PinNumber, state: bool):
-    return pins.set_output_state(pin_number, state)
-
-
-@handle_common_exceptions
-@app.put("/outputs/")
-async def set_multiple_output_states(
-    on_pins: Annotated[list[PinNumber], Query()] = [], off_pins: Annotated[list[PinNumber], Query()] = []
-):
-    # Turn on after turning off to avoid potential overvoltages on combined outputs
-    pin_state_pairs = [(pin, False) for pin in off_pins] + [(pin, True) for pin in on_pins]
-
-    for pin, state in pin_state_pairs:
-        pins.set_output_state(pin, state)
+# fastapi CLI does not excute the entrypoint if guarded with `if __name__ == "__main__"`
+main()

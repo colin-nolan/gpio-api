@@ -30,6 +30,7 @@ def get_device(
         return device_register[pin_number]
 
     with devices_register_lock:
+        # XXX: It would be better if the purpose of a pin could be converted, or they were treated more agnostically
         if device_register == output_device_register and pin_number in input_devices_register:
             raise PinRegisterError(f"Pin {pin_number} is already registered as an input device")
         elif device_register == input_devices_register and pin_number in output_device_register:
