@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from sqlalchemy.orm import sessionmaker
+
+from gpio_api.pins.abstract import PinController
 
 # FastAPI does not have a good mechanism for passing configuration to the application so resorting to a global...
 _APP_CONFIGURATION: "AppConfiguration"
@@ -7,13 +8,10 @@ _APP_CONFIGURATION: "AppConfiguration"
 
 @dataclass
 class AppConfiguration:
-    database_session_maker: sessionmaker | None = None
-
-    def create_database_session(self):
-        return self.database_session_maker()
+    pin_controller: PinController
 
 
-def app_configuration() -> AppConfiguration | None:
+def app_configuration() -> AppConfiguration:
     return _APP_CONFIGURATION
 
 
