@@ -98,6 +98,9 @@ def main():
 
     settings = Settings()
 
+    logger.info("Initialising database")
+    initialise_database(settings.database_url)
+
     remote_pin_controller, process = start_remote_pin_controller(settings.database_url)
 
     logger.info("Initialising output pins")
