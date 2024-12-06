@@ -39,9 +39,6 @@ RUN poetry install --only main --no-root --all-extras
 COPY src src
 RUN poetry install --only main --all-extras
 
-# TODO: required?!
-RUN /app/bin/pip install gpiod
-
 
 ##################################################
 # Runtime
