@@ -1,3 +1,4 @@
+from functools import wraps
 import logging
 from threading import Lock
 from typing import Callable, Type, TypeVar
@@ -16,6 +17,7 @@ _DEVICES_REGISTER_LOCK = Lock()
 
 
 def _get_output_device(callable: Callable) -> Callable:
+    @wraps(callable)
     def wrapper(self, pin_number: int, *args, **kwargs) -> OutputDevice:
         device = _get_device(pin_number, _OUTPUT_DEVICE_REGISTER, OutputDevice)
         return callable(self, device, *args, **kwargs)
@@ -24,6 +26,7 @@ def _get_output_device(callable: Callable) -> Callable:
 
 
 def _get_input_device(callable: Callable) -> Callable:
+    @wraps(callable)
     def wrapper(self, pin_number: int, *args, **kwargs) -> InputDevice:
         device = _get_device(pin_number, _INPUT_DEVICES_REGISTER, InputDevice)
         return callable(self, device, *args, **kwargs)
@@ -32,6 +35,10 @@ def _get_input_device(callable: Callable) -> Callable:
 
 
 class LocalPinController(PinController):
+    @_get_input_device
+    def read_input_state(self, device: InputDevice) -> bool:
+        return device.is_active
+
     @_get_output_device
     def read_output_state(self, device: OutputDevice) -> bool:
         return device.is_active
@@ -42,10 +49,6 @@ class LocalPinController(PinController):
             device.on()
         else:
             device.off()
-
-    @_get_input_device
-    def read_input_state(self, device: InputDevice) -> bool:
-        return device.is_active
 
 
 class PinRegisterError(RuntimeError):
@@ -74,11 +77,13 @@ def _get_device(
             device_register == _OUTPUT_DEVICE_REGISTER
             and pin_number in _INPUT_DEVICES_REGISTER
         ):
+            logger.debug(f"Input device register: {_INPUT_DEVICES_REGISTER}")
             raise PinRegisterError(pin_number, InputDevice)
         elif (
             device_register == _INPUT_DEVICES_REGISTER
             and pin_number in _OUTPUT_DEVICE_REGISTER
         ):
+            logger.debug(f"Output device register: {_OUTPUT_DEVICE_REGISTER}")
             raise PinRegisterError(pin_number, OutputDevice)
 
         device = device_factory(pin_number)

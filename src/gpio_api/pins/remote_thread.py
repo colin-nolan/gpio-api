@@ -45,21 +45,21 @@ class RemotePinController(PinController):
         self._connection = connection
         self._lock = lock
 
-    def read_output_state(self, pin_number: PinNumber) -> bool:
+    def read_input_state(self, pin_number: PinNumber) -> bool:
         with self._lock:
             self._connection.send(Request(pin_number, Operation.READ_INPUT, None))
+            response = self._connection.recv()
+            return _unpack_response(response)
+
+    def read_output_state(self, pin_number: PinNumber) -> bool:
+        with self._lock:
+            self._connection.send(Request(pin_number, Operation.READ_OUTPUT, None))
             response = self._connection.recv()
             return _unpack_response(response)
 
     def set_output_state(self, pin_number: PinNumber, state: bool):
         with self._lock:
             self._connection.send(Request(pin_number, Operation.SET_OUTPUT, state))
-            response = self._connection.recv()
-            return _unpack_response(response)
-
-    def read_input_state(self, pin_number: PinNumber) -> bool:
-        with self._lock:
-            self._connection.send(Request(pin_number, Operation.READ_INPUT, None))
             response = self._connection.recv()
             return _unpack_response(response)
 
