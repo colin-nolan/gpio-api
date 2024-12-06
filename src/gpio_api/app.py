@@ -66,7 +66,12 @@ def start_pin_controller_process(
     pin_recorder = create_pin_recorder(database_url)
     pin_controller = RecordingPinController(LocalPinController(), pin_recorder)
 
-    pin_setter(consumer_connection, pin_controller)
+    while True:
+        try:
+            pin_setter(consumer_connection, pin_controller)
+        except Exception as e:
+            logger.exception(e)
+            consumer_connection.send(e)
 
 
 def start_app(settings: Settings, app_configuration: AppConfiguration):

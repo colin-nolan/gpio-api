@@ -56,6 +56,9 @@ class PinRegisterError(RuntimeError):
         self.pin_number = pin_number
         self.pin_device_type = pin_device_type
 
+    def __reduce__(self):
+        return (PinRegisterError, (self.pin_number, self.pin_device_type))
+
 
 def _get_device(
     pin_number: PinNumber,

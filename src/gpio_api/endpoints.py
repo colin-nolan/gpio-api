@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from functools import wraps
 from http import HTTPStatus
 from typing import Annotated
 
@@ -13,9 +14,10 @@ router = APIRouter()
 
 
 def _handle_common_exceptions(callable: Callable):
-    def wrapper(*args, **kwargs):
+    @wraps(callable)
+    async def wrapper(*args, **kwargs):
         try:
-            return callable(*args, **kwargs)
+            return await callable(*args, **kwargs)
         except PinInvalidPin as e:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND, detail="Pin not found"
@@ -29,8 +31,8 @@ def _handle_common_exceptions(callable: Callable):
     return wrapper
 
 
-@_handle_common_exceptions
 @router.get("/input/{pin_number}")
+@_handle_common_exceptions
 async def read_input_state(
     configuration: Annotated[AppConfiguration, Depends(app_configuration)],
     pin_number: int,
@@ -38,8 +40,8 @@ async def read_input_state(
     return configuration.pin_controller.read_input_state(pin_number)
 
 
-@_handle_common_exceptions
 @router.get("/output/{pin_number}")
+@_handle_common_exceptions
 async def read_output_state(
     configuration: Annotated[AppConfiguration, Depends(app_configuration)],
     pin_number: int,
@@ -47,8 +49,8 @@ async def read_output_state(
     return configuration.pin_controller.read_output_state(pin_number)
 
 
-@_handle_common_exceptions
 @router.put("/output/{pin_number}")
+@_handle_common_exceptions
 async def set_output_state(
     configuration: Annotated[AppConfiguration, Depends(app_configuration)],
     pin_number: PinNumber,
