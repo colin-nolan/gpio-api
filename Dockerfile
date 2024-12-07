@@ -30,7 +30,6 @@ RUN pip install \
 
 WORKDIR /app
 ENV VIRTUAL_ENV=/app
-#RUN python -m venv --without-pip "${VIRTUAL_ENV}"
 RUN python -m venv "${VIRTUAL_ENV}"
 
 COPY pyproject.toml poetry.lock ./
