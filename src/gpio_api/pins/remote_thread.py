@@ -67,7 +67,7 @@ class RemotePinController(PinController):
 def pin_setter(connection: Connection, pin_controller: PinController):
     while True:
         request: Request = connection.recv()
-        logger.info(
+        logger.debug(
             f"Received {request.operation} for {request.pin_number} with value {request.value}"
         )
 
@@ -95,5 +95,5 @@ def pin_setter(connection: Connection, pin_controller: PinController):
         except Exception as e:
             response = Response(error=e)
 
-        logger.info(f"Responding: {response}")
+        logger.debug(f"Responding: {response}")
         connection.send(response)
